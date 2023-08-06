@@ -1,7 +1,7 @@
 {
-  "prefix": "",
+  "prefix": ";",
   "token": "",
-  "sync_commands_globally": true,
+  "sync_commands_globally": false,
   "application_id": "",
   "owners": []
 }
