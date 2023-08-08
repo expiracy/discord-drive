@@ -33,7 +33,14 @@ class StorageBot:
             intents=intents,
         )
 
-    async def upload_file(self, file, guild_id):
+    async def get_message(self, message_id, guild_id=1136677852796952586, channel_id=1137850799523889314):
+        guild = self.bot.get_guild(guild_id)
+
+        channel = guild.get_channel(channel_id)
+
+        return await channel.fetch_message(message_id)
+
+    async def upload_file(self, file, guild_id=1136677852796952586):
         guild = self.bot.get_guild(guild_id)
 
         for channel in guild.channels:
@@ -50,16 +57,28 @@ class StorageBot:
     async def connect(self):
         await self.bot.connect()
 
+    async def send_message(self, message, guild_id=1136677852796952586, channel_id=1137850799523889314):
+        guild = self.bot.get_guild(guild_id)
+        channel = guild.get_channel(channel_id)
+
+        message = await channel.send(message)
+        return message.id
+
+    async def get_file(self, message_id=1137904409108566016, guild_id=1136677852796952586, channel_id=1137850799523889314):
+        guild = self.bot.get_guild(guild_id)
+
+        channel = guild.get_channel(channel_id)
+
+        message = await channel.fetch_message(message_id)
+
+        return message.attachments[0]
+
+    '''
     async def create_folder(self, guild_id: int, folder_name: str) -> int:
         guild = self.bot.get_guild(guild_id)
 
-        if not guild:
-            return -1
-
-        if folder_name in set(map(lambda c: str(c), guild.text_channels)):
-            return -1
-
         channel = await guild.create_text_channel(name=folder_name)
         return channel.id
+    '''
 
 

@@ -15,6 +15,14 @@
         <button type="submit">Submit</button>
     </form>
 
+    <form action="/api/get_file" method="GET">
+        <label>
+            Folder Name
+            <input type="text" name="id">
+        </label>
+        <button type="submit">Submit</button>
+    </form>
+
     <form action="/api/upload_files" method="post" enctype="multipart/form-data">
         <input type="file" name="files[]" id="files" multiple>
         <input type="submit" value="Upload">
