@@ -32,7 +32,9 @@ body, html {
 
 .right-cell {
     width: 80%;
-    padding: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
     vertical-align: top;
 }
 

@@ -25,12 +25,38 @@ dragDrop.addEventListener('click', () => {
     fileInput.click();
 });
 
-fileInput.addEventListener('change', (e) => {
+fileInput.addEventListener('change', async (e) => {
     const files = e.target.files;
-    handleFiles(files);
+    await handleFiles(files);
 });
 
-function handleFiles(files) {
+async function handleFiles(files) {
     // Handle the dropped or selected files here
+
     console.log(files);
+
+    const formData = new FormData();
+
+    for (let i = 0; i < files.length; i++)
+        formData.append('files', files[i]);
+
+    try {
+        let response =
+            await fetch(`/api/upload_files${window.location.pathname}`, {
+                method: 'POST',
+                body: formData
+            });
+
+        let text = await response.text();
+
+        if (!response.ok) {
+            console.error(text);
+            return;
+        }
+
+        console.log(text);
+
+    } catch (e) {
+        console.error(e);
+    }
 }

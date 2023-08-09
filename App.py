@@ -23,6 +23,7 @@ app.config['MAX_CONTENT_LENGTH'] = 1e9
 bot = StorageBot()
 database = DatabaseManager()
 
+
 @app.before_serving
 async def before_serving():
     loop = asyncio.get_event_loop()
@@ -31,8 +32,8 @@ async def before_serving():
 
 
 @app.route("/", methods=["GET"])
-async def index():
-    return await render_template("index.html"), 200
+async def index(**kwargs):
+    return await render_template("index.html", **kwargs), 200
 
 '''
 @app.route("/api/create_folder", methods=["GET"])
@@ -43,14 +44,19 @@ async def create_folder():
 '''
 
 
-@app.route("/api/get_file", methods=["GET"])
-async def get_file():
-    file_id = request.args.get("id")
-
+@app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["GET"])
+async def get_file(guild_id, directory_id, file_id):
     file_info = database.get_file_info(file_id)
 
     if not file_info:
-        return "File does not exist"
+        return "File does not exist", 400
+
+    root = database.get_root(guild_id)
+
+    if not root:
+        return "Server has not been registered", 400
+
+    channel_id, _ = root
 
     file_name, content_type = file_info
 
@@ -59,8 +65,7 @@ async def get_file():
     message_ids = database.get_file_parts(file_id)
 
     for message_id in message_ids:
-        print(message_id)
-        attachment = (await bot.get_message(message_id)).attachments[0]  # Only 1 attachment per message
+        attachment = (await bot.get_message(message_id, guild_id, channel_id)).attachments[0]
 
         data_file_path = f"{ROOT}\\temp\\{attachment.filename}"
         await attachment.save(data_file_path)
@@ -73,14 +78,14 @@ async def get_file():
     file.reassemble(f"{ROOT}\\temp")
     file_path = f"{ROOT}\\temp\\{file.name}"
 
-    return await send_file(file_path)
+    return await send_file(file_path), 200
 
 
-@app.route("/path/<path:path>")
-async def directory_handler(path):
-    print(path)
+@app.route("/<int:guild_id>/<int:directory_id>")
+async def url_handler(guild_id, directory_id):
 
-    return path
+    #TODO
+    return await index(guild_id=guild_id, directory_id=directory_id)
 
 
 @app.route("/api/login")
@@ -89,15 +94,17 @@ async def login_user():
     password = request.args.get("password")
 
     guild_id = database.get_details(username, password)
-    folder_id = database.get_root_directory(guild_id)
+    root = database.get_root(guild_id)
 
     if not guild_id:
         return "login", 400
 
-    if not folder_id:
+    if not root:
         return "login", 400
 
-    return f"{guild_id[0]}/{folder_id[0]}", 200
+    channel_id, folder_id = root
+
+    return f"{guild_id[0]}/{folder_id}", 200
 
 
 @app.route("/test")
@@ -110,18 +117,17 @@ async def login_page():
     return await render_template("login.html"), 200
 
 
-@app.route("/api/upload_files", methods=["POST"])
-async def upload_file():
-
-    request_files = (await request.files).getlist('files[]')
+@app.route("/api/upload_files/<int:guild_id>/<int:directory_id>", methods=["POST"])
+async def upload_file(guild_id, directory_id):
+    request_files = (await request.files).getlist('files')
 
     if len(request_files) == 0:
-        return jsonify(error="No files selected."), 400
+        return "No files selected.", 400
 
     for request_file in request_files:
 
         if request_file.filename == '':
-            return jsonify(error="One or more selected files are empty."), 400
+            return "One or more selected files are empty.", 400
 
         if not request_file:
             continue
@@ -140,17 +146,17 @@ async def upload_file():
             with open(data_file_path, 'wb') as data_file:
                 data_file.write(part)
 
-            message_id = await bot.upload_file(data_file_path)
+            message_id = await bot.upload_file(data_file_path, guild_id)
             message_ids.append(message_id)
 
             os.remove(data_file_path)
 
         os.remove(file_path)
 
-        database.insert_file(file, message_ids)
+        database.insert_file(file, message_ids, directory_id)
 
-    return jsonify(success=f"File(s) uploaded successfully"), 200
+    return "File(s) uploaded successfully", 200
 
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    app.run(port=5000)

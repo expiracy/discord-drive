@@ -19,8 +19,9 @@ class Administration(commands.Cog, name="Administration"):
 
     @staticmethod
     def register_in_database(username, password, guild_id, channel_id):
-        DatabaseManager.register_user(username, password, guild_id, channel_id)
-        DatabaseManager.add_directory("files", -1, guild_id)
+        directory_id = DatabaseManager.add_directory("files", None)
+        DatabaseManager.register_user(username, password, guild_id, channel_id, directory_id)
+
 
     @commands.hybrid_command(
         name="register_server",
@@ -31,7 +32,7 @@ class Administration(commands.Cog, name="Administration"):
         threading.Thread(target=Administration.register_in_database,
                          args=(context.author.name, password, context.guild.id, file_channel.id)).start()
 
-        await context.reply(f"SERVER REGISTERED\nUsername: {context.author.name}\nPassword: {password}")
+        return await context.send(f"SERVER REGISTERED\nUsername: {context.author.name}\nPassword: {password}")
 
 
 async def setup(bot):
