@@ -83,7 +83,7 @@ class DatabaseManager:
 
         cursor.execute(select_statement, file_id)
 
-        return cursor.fetchall()
+        return cursor.fetchone()
 
     def get_file_parts(self, file_id):
         cursor = self.connection.cursor()
@@ -119,6 +119,18 @@ class DatabaseManager:
 
         self.connection.commit()
         cursor.close()
+
+    def get_details(self, username, password):
+        cursor = self.connection.cursor()
+
+        users_statement = '''
+            SELECT guild_id FROM Users 
+            WHERE username=? AND password=?
+        '''
+
+        cursor.execute(users_statement, (username, password))
+
+        return cursor.fetchone()
 
 
 if __name__ == "__main__":

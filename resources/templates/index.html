@@ -2,32 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/style.css">
+    <title>Discord Drive</title>
 </head>
 <body>
-    <p>Here is my variable: {{ variable }}</p>
-
-    <form action="/api/create_folder" method="GET">
-        <label>
-            Folder Name
-            <input type="text" name="name">
-        </label>
-        <button type="submit">Submit</button>
-    </form>
-
-    <form action="/api/get_file" method="GET">
-        <label>
-            Folder Name
-            <input type="text" name="id">
-        </label>
-        <button type="submit">Submit</button>
-    </form>
-
-    <form action="/api/upload_files" method="post" enctype="multipart/form-data">
-        <input type="file" name="files[]" id="files" multiple>
-        <input type="submit" value="Upload">
-    </form>
-
+    <table class="split-table" >
+        <tr>
+            <td colspan="2" class="top-cell">
+                <input type="text" class="text-input" placeholder="Search" id="search">
+            </td>
+        </tr>
+        <tr>
+            <td class="left-cell" rowspan="2">
+                <div class="left-box">
+                    <div class="drag-drop" id="dragDrop">
+                        Drag files here or click to upload
+                    </div>
+                    <input type="file" id="fileInput" style="display: none;">
+                    <button type="submit" class="button top-margin">New folder</button>
+                </div>
+            </td>
+            <td class="right-cell">
+                <div class="bottom-section" id="directory">
+                </div>
+            </td>
+        </tr>
+    </table>
+    <script src="../static/script.js"></script>
 </body>
-<script type="text/javascript" src="../static/script.js"></script>
 </html>

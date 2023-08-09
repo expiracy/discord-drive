@@ -6,8 +6,9 @@ import numpy as np
 import discord
 import asyncio
 
+import quart
 import requests
-from quart import Quart, render_template, request, jsonify
+from quart import Quart, render_template, request, jsonify, send_file
 
 from database.DatabaseManager import DatabaseManager
 from discord_bot.StorageBot import StorageBot
@@ -49,6 +50,8 @@ async def create_folder():
 
 @app.route("/api/get_file", methods=["GET"])
 async def get_file():
+
+
     file_id = request.args.get("id")
 
     file_info = database.get_file_info(file_id)
@@ -64,7 +67,7 @@ async def get_file():
 
     for message_id in message_ids:
         print(message_id)
-        attachment = (await bot.get_message(message_id)).attachments[0]
+        attachment = (await bot.get_message(message_id)).attachments[0]  # Only 1 attachment per message
 
         data_file_path = f"{ROOT}\\temp\\{attachment.filename}"
         await attachment.save(data_file_path)
@@ -75,8 +78,48 @@ async def get_file():
         os.remove(data_file_path)
 
     file.reassemble(f"{ROOT}\\temp")
+    file_path = f"{ROOT}\\temp\\{file.name}"
 
-    return "A"
+    @quart.after_this_request
+    def process_after_request(response):
+        os.remove(file_path)
+        return response
+
+    return send_file(file_path)
+
+
+@app.route("/path/<path:path>")
+async def directory_handler(path):
+    print(path)
+
+    return path
+
+
+@app.route("/api/login")
+async def login_user():
+    username = request.args.get("username")
+    password = request.args.get("password")
+
+    guild_id = database.get_details(username, password)
+
+    return username
+
+
+@app.route("/api/register", methods=["POST"])
+async def register_user():
+    username = request.args.get("username")
+    password = request.args.get("password")
+    guild_id = int(request.args.get("guild_id"))
+    channel_id = int(request.args.get("channel_id"))
+
+    print(username, password, guild_id, channel_id)
+
+    return "Success!"
+
+
+@app.route("/login")
+async def login_page():
+    return await render_template("login.html"), 200
 
 
 @app.route("/api/upload_files", methods=["POST"])
@@ -92,30 +135,31 @@ async def upload_file():
         if request_file.filename == '':
             return jsonify(error="One or more selected files are empty."), 400
 
-        if request_file:
+        if not request_file:
+            continue
 
-            file_path = f"{ROOT}\\temp\\{request_file.filename}"
-            await request_file.save(file_path)
+        file_path = f"{ROOT}\\temp\\{request_file.filename}"
+        await request_file.save(file_path)
 
-            with open(file_path, 'rb') as uploaded_file:
-                file = File(request_file.filename, request_file.content_type)
-                file.split(uploaded_file)
+        with open(file_path, 'rb') as uploaded_file:
+            file = File(request_file.filename, request_file.content_type)
+            file.split(uploaded_file)
 
-            message_ids = []
-            for part_number, part in enumerate(file.parts):
-                data_file_path = f"{ROOT}\\temp\\{request_file.filename}_{part_number}.dat"
+        message_ids = []
+        for part_number, part in enumerate(file.parts):
+            data_file_path = f"{ROOT}\\temp\\{request_file.filename}_{part_number}.dat"
 
-                with open(data_file_path, 'wb') as data_file:
-                    data_file.write(part)
+            with open(data_file_path, 'wb') as data_file:
+                data_file.write(part)
 
-                message_id = await bot.upload_file(data_file_path)
-                message_ids.append(message_id)
+            message_id = await bot.upload_file(data_file_path)
+            message_ids.append(message_id)
 
-                os.remove(data_file_path)
+            os.remove(data_file_path)
 
-            os.remove(file_path)
+        os.remove(file_path)
 
-            database.insert_file(file, message_ids)
+        database.insert_file(file, message_ids)
 
     return jsonify(success=f"File(s) uploaded successfully"), 200
 

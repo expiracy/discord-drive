@@ -11,7 +11,6 @@ class File:
         self.parts = []
         self.content_type = content_type
 
-
     def add_part(self, part):
         self.parts.append(part)
 
