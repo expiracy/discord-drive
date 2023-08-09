@@ -8,6 +8,7 @@ class Registration:
         self.guild_id = guild_id
         self.channel_id = channel_id
 
+
     def to_json(self):
         return jsonify(
             username=self.username,

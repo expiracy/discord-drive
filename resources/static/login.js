@@ -13,13 +13,9 @@ async function loginAccount() {
             alert("Invalid username or password.");
             return;
         }
-        window.location.href = '../';
+        window.location.href = `../${await response.text()}`
 
     } catch (e) {
         console.error(e);
     }
-}
-
-function registerAccount() {
-    console.log("A")
 }

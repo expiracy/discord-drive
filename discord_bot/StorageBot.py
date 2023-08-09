@@ -35,7 +35,6 @@ class StorageBot:
         self.bot = commands.Bot(
             command_prefix="!",
             intents=intents,
-
         )
 
         asyncio.run(self.load_cogs())
@@ -70,9 +69,11 @@ class StorageBot:
 
     async def login(self):
         await self.bot.login(self.config["token"])
-        print(f"Logged in as {self.bot.user}")
+
         if self.config["sync_commands_globally"]:
             await self.bot.tree.sync()
+
+        print(f"Logged in as {self.bot.user}")
 
     async def connect(self):
         await self.bot.connect()

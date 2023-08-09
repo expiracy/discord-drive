@@ -4,12 +4,18 @@ from storage import File
 
 
 class DatabaseManager:
-    def __init__(self):
-        self.connection = sqlite3.connect('discord_storage.db')
-        self.create_tables()
 
-    def create_tables(self):
-        cursor = self.connection.cursor()
+    def __init__(self):
+        DatabaseManager.create_tables()
+
+    @staticmethod
+    def get_connection():
+        return sqlite3.connect('discord_storage.db')
+
+    @staticmethod
+    def create_tables():
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
 
         # Create Servers table
         cursor.execute('''
@@ -43,12 +49,15 @@ class DatabaseManager:
         # Create Directory table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS Directory (
-                directory_id INTEGER PRIMARY KEY,
+                directory_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 directory_name VARCHAR(100),
                 parent_id INTEGER,
+                guild_id INTEGER,
                 FOREIGN KEY (parent_id) REFERENCES Directory(directory_id)
+                FOREIGN KEY (guild_id) REFERENCES Servers(guild_id)
             )
         ''')
+
 
         # Create DirectoryChildren table
         cursor.execute('''
@@ -69,12 +78,12 @@ class DatabaseManager:
             )
         ''')
 
-        # Commit and close the cursor
-        self.connection.commit()
+        connection.commit()
         cursor.close()
 
-    def get_file_info(self, file_id):
-        cursor = self.connection.cursor()
+    @staticmethod
+    def get_file_info(file_id):
+        cursor = DatabaseManager.get_connection().cursor()
 
         select_statement = '''
             SELECT file_name, content_type FROM Files
@@ -83,10 +92,13 @@ class DatabaseManager:
 
         cursor.execute(select_statement, file_id)
 
-        return cursor.fetchone()
+        res = cursor.fetchone()
+        cursor.close()
+        return res
 
-    def get_file_parts(self, file_id):
-        cursor = self.connection.cursor()
+    @staticmethod
+    def get_file_parts(file_id):
+        cursor = DatabaseManager.get_connection().cursor()
 
         select_statement = '''
             SELECT message_id FROM FileParts
@@ -95,11 +107,15 @@ class DatabaseManager:
         '''
 
         cursor.execute(select_statement, file_id)
+        res = cursor.fetchall()
+        cursor.close()
 
-        return list(map(lambda x: x[0], cursor.fetchall()))
+        return list(map(lambda x: x[0], res))
 
-    def insert_file(self, file: File, message_ids: list):
-        cursor = self.connection.cursor()
+    @staticmethod
+    def insert_file(file: File, message_ids: list):
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
 
         files_statement = '''
             INSERT INTO Files (file_name, content_type)
@@ -117,11 +133,35 @@ class DatabaseManager:
         for part_number, message_id in enumerate(message_ids):
             cursor.execute(file_parts_statement, (file_id, part_number, message_id))
 
-        self.connection.commit()
+        connection.commit()
         cursor.close()
 
-    def get_details(self, username, password):
-        cursor = self.connection.cursor()
+    @staticmethod
+    def register_user(username, password, guild_id, channel_id):
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
+
+        servers_statement = '''
+            INSERT OR REPLACE INTO Servers(guild_id, channel_id)
+            values (?, ?);
+        '''
+
+        cursor.execute(servers_statement, (guild_id, channel_id))
+        connection.commit()
+
+        users_statement = '''
+            INSERT INTO Users(username, password, guild_id)
+            VALUES (?, ?, ?);
+        '''
+
+        cursor.execute(users_statement, (username, password, guild_id))
+        connection.commit()
+        cursor.close()
+
+    @staticmethod
+    def get_details(username, password):
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
 
         users_statement = '''
             SELECT guild_id FROM Users 
@@ -130,8 +170,44 @@ class DatabaseManager:
 
         cursor.execute(users_statement, (username, password))
 
-        return cursor.fetchone()
+        res = cursor.fetchone()
+        cursor.close()
+        return res
+
+    @staticmethod
+    def add_directory(directory_name: str, parent_id: int, guild_id: int):
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
+
+        directory_statement = '''
+            INSERT INTO Directory(directory_name, parent_id, guild_id)
+            VALUES (?, ?, ?)
+        '''
+
+        args = (directory_name, parent_id, guild_id)
+        if parent_id == -1:
+            args = (directory_name, None, guild_id)
+
+        cursor.execute(directory_statement, args)
+        connection.commit()
+        cursor.close()
+
+    @staticmethod
+    def get_root_directory(guild_id):
+        connection = DatabaseManager.get_connection()
+        cursor = connection.cursor()
+
+        root_directory_statement = '''
+            SELECT directory_id FROM Directory
+            WHERE parent_id IS NULL AND guild_id=?
+        '''
+
+        cursor.execute(root_directory_statement, guild_id)
+
+        res = cursor.fetchone()
+        cursor.close()
+        return res
 
 
-if __name__ == "__main__":
-    DatabaseManager()
+if __name__ == '__main__':
+    database = DatabaseManager()

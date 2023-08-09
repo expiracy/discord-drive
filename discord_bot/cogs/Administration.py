@@ -1,7 +1,14 @@
+import asyncio
+import threading
+import time
+
+import aiohttp
 import requests
 from discord.ext import commands
 from discord.ext.commands import Context
+from quart import request
 
+from database.DatabaseManager import DatabaseManager
 from storage.Registration import Registration
 
 
@@ -10,18 +17,21 @@ class Administration(commands.Cog, name="Administration"):
     def __init__(self, bot):
         self.bot = bot
 
+    @staticmethod
+    def register_in_database(username, password, guild_id, channel_id):
+        DatabaseManager.register_user(username, password, guild_id, channel_id)
+        DatabaseManager.add_directory("files", -1, guild_id)
+
     @commands.hybrid_command(
         name="register_server",
         description="Register this server as a storage server.",
     )
-    async def register_server(self, context: Context, password: str):
+    async def register(self, context: Context, password: str):
         file_channel = await context.guild.create_text_channel(name="files")
-        registration = Registration(context.author.name, password, context.guild.id, file_channel.id)
+        threading.Thread(target=Administration.register_in_database,
+                         args=(context.author.name, password, context.guild.id, file_channel.id)).start()
 
-        response = requests.post("http://127.0.0.1:5000/api/register", json=registration.to_json())
-        print(response)
-
-        return await context.send(f"Successfully registered server!\nUsername: {registration.username}\nPassword: {registration.password}")
+        await context.reply(f"SERVER REGISTERED\nUsername: {context.author.name}\nPassword: {password}")
 
 
 async def setup(bot):

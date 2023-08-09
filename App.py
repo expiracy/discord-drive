@@ -1,13 +1,9 @@
 import json
 import os
-from urllib.request import urlretrieve
-import numpy as np
 
-import discord
 import asyncio
 
 import quart
-import requests
 from quart import Quart, render_template, request, jsonify, send_file
 
 from database.DatabaseManager import DatabaseManager
@@ -26,7 +22,6 @@ app.config['MAX_CONTENT_LENGTH'] = 1e9
 
 bot = StorageBot()
 database = DatabaseManager()
-
 
 @app.before_serving
 async def before_serving():
@@ -50,8 +45,6 @@ async def create_folder():
 
 @app.route("/api/get_file", methods=["GET"])
 async def get_file():
-
-
     file_id = request.args.get("id")
 
     file_info = database.get_file_info(file_id)
@@ -59,7 +52,7 @@ async def get_file():
     if not file_info:
         return "File does not exist"
 
-    file_name, content_type = file_info[0]
+    file_name, content_type = file_info
 
     file = File(file_name, content_type)
 
@@ -80,12 +73,7 @@ async def get_file():
     file.reassemble(f"{ROOT}\\temp")
     file_path = f"{ROOT}\\temp\\{file.name}"
 
-    @quart.after_this_request
-    def process_after_request(response):
-        os.remove(file_path)
-        return response
-
-    return send_file(file_path)
+    return await send_file(file_path)
 
 
 @app.route("/path/<path:path>")
@@ -101,20 +89,20 @@ async def login_user():
     password = request.args.get("password")
 
     guild_id = database.get_details(username, password)
+    folder_id = database.get_root_directory(guild_id)
 
-    return username
+    if not guild_id:
+        return "login", 400
+
+    if not folder_id:
+        return "login", 400
+
+    return f"{guild_id[0]}/{folder_id[0]}", 200
 
 
-@app.route("/api/register", methods=["POST"])
-async def register_user():
-    username = request.args.get("username")
-    password = request.args.get("password")
-    guild_id = int(request.args.get("guild_id"))
-    channel_id = int(request.args.get("channel_id"))
-
-    print(username, password, guild_id, channel_id)
-
-    return "Success!"
+@app.route("/test")
+async def test():
+    return "TEST"
 
 
 @app.route("/login")
@@ -165,4 +153,4 @@ async def upload_file():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(port=5000, debug=True)
