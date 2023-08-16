@@ -6,19 +6,12 @@ from storage import File
 class DatabaseManager:
 
     def __init__(self):
-        DatabaseManager.create_tables()
+        self.connection = sqlite3.connect('discord_storage.db')
+        self.cursor = self.connection.cursor()
 
-    @staticmethod
-    def get_connection():
-        return sqlite3.connect('discord_storage.db')
-
-    @staticmethod
-    def create_tables():
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def create_tables(self):
         # Create Servers table
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Servers (
                 guild_id INTEGER PRIMARY KEY,
                 channel_id INTEGER,
@@ -28,7 +21,7 @@ class DatabaseManager:
         ''')
 
         # Create Users table
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Users (
                 username VARCHAR(32),
                 password VARCHAR(100),
@@ -38,18 +31,20 @@ class DatabaseManager:
         ''')
 
         # Create Files table
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Files (
                 file_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 file_name VARCHAR(100),
                 content_type VARCHAR(10),
                 directory_id INTEGER,
+                file_timestamp TIMESTAMP,
+                guild_id INTEGER,
                 FOREIGN KEY (directory_id) REFERENCES Directory(directory_id)
             )
         ''')
 
         # Create Directory table
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS Directory (
                 directory_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                 directory_name VARCHAR(100),
@@ -58,18 +53,18 @@ class DatabaseManager:
             )
         ''')
 
-
-        # Create DirectoryChildren table
-        cursor.execute('''
+        # Create DirectoryChil`dren table
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS DirectoryChildren (
-                directory_id INTEGER PRIMARY KEY,
+                directory_id INTEGER,
                 child_id INTEGER,
-                FOREIGN KEY (child_id) REFERENCES Directory(directory_id)
+                FOREIGN KEY (child_id) REFERENCES Directory(directory_id),
+                PRIMARY KEY(directory_id, child_id)
             )
         ''')
 
         # Create FileParts table
-        cursor.execute('''
+        self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS FileParts (
                 file_id INTEGER,
                 part_number INTEGER,
@@ -78,83 +73,59 @@ class DatabaseManager:
             )
         ''')
 
-        connection.commit()
-        cursor.close()
+        self.connection.commit()
 
-    @staticmethod
-    def get_file_info(file_id):
-        cursor = DatabaseManager.get_connection().cursor()
-
+    def get_file_info(self, file_id):
         select_statement = '''
             SELECT file_name, content_type FROM Files
             WHERE file_id = ?;
         '''
 
-        cursor.execute(select_statement, (file_id,))
+        self.cursor.execute(select_statement, (file_id,))
 
-        res = cursor.fetchone()
-        cursor.close()
+        res = self.cursor.fetchone()
         return res
 
-    @staticmethod
-    def get_directory(directory_id):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def get_directory(self, directory_id):
         files_statement = '''
-            SELECT file_name FROM Files
+            SELECT file_id, file_name FROM Files
             WHERE directory_id=?
             ORDER BY file_name ASC;
         '''
 
-        cursor.execute(files_statement, (directory_id,))
-        files = cursor.fetchall()
+        self.cursor.execute(files_statement, (directory_id,))
+        files = self.cursor.fetchall()
 
         directory_statement = '''
-            SELECT directory_name FROM Directory
+            SELECT directory_id, directory_name FROM Directory
             WHERE parent_id=?
         '''
-        cursor.execute(directory_statement, (directory_id,))
+        self.cursor.execute(directory_statement, (directory_id,))
 
-        folders = cursor.fetchall()
+        folders = self.cursor.fetchall()
 
-        cursor.close()
+        return files, folders
 
-        return list(map(lambda x: x[0], files + folders))
-
-
-
-
-
-    @staticmethod
-    def get_file_parts(file_id):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def get_file_parts(self, file_id):
         file_parts_statement = '''
             SELECT message_id FROM FileParts
             WHERE file_id = ?
             ORDER BY part_number ASC;
         '''
 
-        cursor.execute(file_parts_statement, (file_id,))
-        res = cursor.fetchall()
-        cursor.close()
+        self.cursor.execute(file_parts_statement, (file_id,))
+        res = self.cursor.fetchall()
 
         return list(map(lambda x: x[0], res))
 
-    @staticmethod
-    def insert_file(file: File, message_ids: list, directory_id: int):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def insert_file(self, file: File, message_ids: list, directory_id: int, guild_id: int):
         files_statement = '''
-            INSERT INTO Files (file_name, content_type, directory_id)
-            VALUES (?, ?, ?);
+            INSERT INTO Files (file_name, content_type, directory_id, guild_id)
+            VALUES (?, ?, ?, ?);
         '''
 
-        cursor.execute(files_statement, (file.name, file.content_type, directory_id))
-        file_id = cursor.lastrowid
+        self.cursor.execute(files_statement, (file.name, file.content_type, directory_id, guild_id))
+        file_id = self.cursor.lastrowid
 
         file_parts_statement = '''
             INSERT INTO FileParts (file_id, part_number, message_id)
@@ -162,82 +133,91 @@ class DatabaseManager:
         '''
 
         for part_number, message_id in enumerate(message_ids):
-            cursor.execute(file_parts_statement, (file_id, part_number, message_id))
+            self.cursor.execute(file_parts_statement, (file_id, part_number, message_id))
 
-        connection.commit()
-        cursor.close()
+        self.connection.commit()
 
-    @staticmethod
-    def register_user(username, password, guild_id, channel_id, directory_id):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def register_user(self, username, password, guild_id, channel_id, directory_id):
         servers_statement = '''
-            INSERT OR REPLACE INTO Servers(guild_id, channel_id, root_directory_id)
+            INSERT INTO Servers(guild_id, channel_id, root_directory_id)
             values (?, ?, ?);
         '''
 
-        cursor.execute(servers_statement, (guild_id, channel_id, directory_id))
-        connection.commit()
+        self.cursor.execute(servers_statement, (guild_id, channel_id, directory_id))
+        self.connection.commit()
 
         users_statement = '''
             INSERT INTO Users(username, password, guild_id)
             VALUES (?, ?, ?);
         '''
 
-        cursor.execute(users_statement, (username, password, guild_id))
-        connection.commit()
-        cursor.close()
+        self.cursor.execute(users_statement, (username, password, guild_id))
+        self.connection.commit()
 
-    @staticmethod
-    def get_details(username, password):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def get_details(self, username, password):
         users_statement = '''
             SELECT guild_id FROM Users 
             WHERE username=? AND password=?
         '''
 
-        cursor.execute(users_statement, (username, password))
+        self.cursor.execute(users_statement, (username, password))
 
-        res = cursor.fetchone()
-        cursor.close()
+        res = self.cursor.fetchone()
         return res
 
-    @staticmethod
-    def add_directory(directory_name: str, parent_id):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def add_directory(self, directory_name: str, parent_id):
         directory_statement = '''
             INSERT INTO Directory(directory_name, parent_id)
             VALUES (?, ?)
         '''
 
-        cursor.execute(directory_statement, (directory_name, parent_id))
+        self.cursor.execute(directory_statement, (directory_name, parent_id))
 
-        directory_id = cursor.lastrowid
-        connection.commit()
-        cursor.close()
+        directory_id = self.cursor.lastrowid
+        self.connection.commit()
 
         return directory_id
 
-    @staticmethod
-    def get_root(guild_id):
-        connection = DatabaseManager.get_connection()
-        cursor = connection.cursor()
-
+    def get_root(self, guild_id):
         server_statement = '''
             SELECT channel_id, root_directory_id FROM Servers
             WHERE guild_id=?;
         '''
 
-        cursor.execute(server_statement, (guild_id,))
+        self.cursor.execute(server_statement, (guild_id,))
 
-        res = cursor.fetchone()
-        cursor.close()
+        res = self.cursor.fetchone()
+        return res
+
+    def create_directory(self, directory_name, parent_id):
+        directory_statement = '''
+            INSERT INTO Directory(directory_name, parent_id)
+            VALUES (?, ?);
+        '''
+
+        self.cursor.execute(directory_statement, (directory_name, parent_id))
+        self.connection.commit()
+        child_id = self.cursor.lastrowid
+
+        children_statement = '''
+            INSERT INTO DirectoryChildren
+            VALUES (?, ?);
+        '''
+
+        self.cursor.execute(children_statement, (parent_id, child_id))
+        self.connection.commit()
+
+    def search(self, substring, guild_id):
+        search_statement = '''
+            SELECT file_id, file_name FROM Files
+            WHERE file_name LIKE '%' || ? || '%' AND guild_id=?;
+        '''
+
+        self.cursor.execute(search_statement, (substring, guild_id))
+        res = self.cursor.fetchall()
+
         return res
 
 if __name__ == '__main__':
     database = DatabaseManager()
+    database.create_tables()

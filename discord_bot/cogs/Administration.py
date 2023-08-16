@@ -19,9 +19,9 @@ class Administration(commands.Cog, name="Administration"):
 
     @staticmethod
     def register_in_database(username, password, guild_id, channel_id):
-        directory_id = DatabaseManager.add_directory("files", None)
-        DatabaseManager.register_user(username, password, guild_id, channel_id, directory_id)
-
+        database = DatabaseManager()
+        directory_id = database.add_directory("files", None)
+        database.register_user(username, password, guild_id, channel_id, directory_id)
 
     @commands.hybrid_command(
         name="register_server",
@@ -29,6 +29,7 @@ class Administration(commands.Cog, name="Administration"):
     )
     async def register(self, context: Context, password: str):
         file_channel = await context.guild.create_text_channel(name="files")
+
         threading.Thread(target=Administration.register_in_database,
                          args=(context.author.name, password, context.guild.id, file_channel.id)).start()
 

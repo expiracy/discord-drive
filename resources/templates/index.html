@@ -10,22 +10,32 @@
     <table class="split-table" >
         <tr>
             <td colspan="2" class="top-cell">
-                <input type="text" class="text-input" placeholder="Search" id="search">
+                <div class="full-box top-bar-div">
+                    <p class="top-bar-text">Discord Drive by Expiracy</p>
+                </div>
             </td>
         </tr>
         <tr>
-            <td class="left-cell" rowspan="2">
-                <div class="left-box">
+            <td class="left-cell">
+                <div class="full-box sidebar-div">
+
+                    <input type="text" class="text-input GRAY-0 bottom-margin" placeholder="Search" id="search">
+
                     <div class="drag-drop" id="dragDrop">
                         Drag files here or click to upload
                     </div>
-                    <input type="file" id="fileInput" style="display: none;">
-                    <button type="submit" class="button top-margin">New folder</button>
+
+                    <input type="file" id="fileInput" style="display: none;"/>
+
+                    <button type="submit" class="button top-margin" onclick="createFolder()">
+                        <img src="../static/new_folder.png" alt="New Folder" class="button-icon"/>
+                        New folder
+                    </button>
                 </div>
             </td>
             <td class="right-cell">
-                <div class="bottom-section" id="directory">
-                    <button type="submit" class="button bottom-margin">Folder</button>
+                <div class="full-box directory-div" id="directory">
+                    {{ directory_html | safe }}
                 </div>
             </td>
         </tr>

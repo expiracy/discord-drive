@@ -1,5 +1,7 @@
 const dragDrop = document.getElementById('dragDrop');
 const fileInput = document.getElementById('fileInput');
+const searchBox = document.getElementById("search");
+const directoryDiv = document.getElementById("directory");
 
 dragDrop.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -13,21 +15,37 @@ dragDrop.addEventListener('dragleave', (e) => {
     dragDrop.style.border = '2px dashed #ccc';
 });
 
-dragDrop.addEventListener('drop', (e) => {
+dragDrop.addEventListener('drop', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     dragDrop.style.border = '2px dashed #ccc';
     const files = e.dataTransfer.files;
-    handleFiles(files);
+    await handleFiles(files);
 });
 
 dragDrop.addEventListener('click', () => {
     fileInput.click();
 });
 
-fileInput.addEventListener('change', async (e) => {
+fileInput.addEventListener("change", async (e) => {
     const files = e.target.files;
     await handleFiles(files);
+});
+
+searchBox.addEventListener('keyup', async (e) => {
+    if (e.key === 'Enter') {
+        try {
+            let page = await fetch(`${window.location.pathname}/search?substring=${searchBox.value}`, {
+                method: "GET",
+                redirect: "follow"
+            });
+
+            directoryDiv.innerHTML = await page.text();
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
 });
 
 async function handleFiles(files) {
@@ -55,6 +73,30 @@ async function handleFiles(files) {
         }
 
         console.log(text);
+
+        location.reload();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function createFolder() {
+    let folderName = prompt("Folder name:");
+
+    if (folderName === '') return;
+
+    console.log(folderName);
+     try {
+        let response = await fetch(`/api/create_folder${window.location.pathname}?name=${folderName}`)
+
+        if (!response.ok) {
+            alert("Error creating folder.");
+            return;
+        }
+
+        console.log(response);
+
+         location.reload();
 
     } catch (e) {
         console.error(e);

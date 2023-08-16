@@ -4,7 +4,7 @@ import os
 import asyncio
 
 import quart
-from quart import Quart, render_template, request, jsonify, send_file
+from quart import Quart, render_template, request, jsonify, send_file, redirect, url_for
 
 from database.DatabaseManager import DatabaseManager
 from discord_bot.StorageBot import StorageBot
@@ -22,6 +22,7 @@ app.config['MAX_CONTENT_LENGTH'] = 1e9
 
 bot = StorageBot()
 database = DatabaseManager()
+database.create_tables()
 
 
 @app.before_serving
@@ -32,16 +33,48 @@ async def before_serving():
 
 
 @app.route("/", methods=["GET"])
-async def index(**kwargs):
-    return await render_template("index.html", **kwargs), 200
+async def app_root():
+    return await login_page()
 
-'''
-@app.route("/api/create_folder", methods=["GET"])
-async def create_folder():
+
+@app.route("/<int:guild_id>/<int:directory_id>/search")
+async def search(guild_id, directory_id):
+    substring = request.args.get('substring')
+
+    files = database.search(substring, guild_id)
+
+    directory_html = ""
+
+    for file_id, file_name in files:
+        directory_html += f'''
+            <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
+                <button type="submit" class="button">
+                    <img src="../static/file.png" alt="File" class="button-icon">
+                    {file_name}
+                </button>
+            </a>\n
+        '''
+
+    return directory_html, 200
+
+
+@app.route("/api/create_folder/<int:guild_id>/<int:directory_id>", methods=["GET"])
+async def create_folder(guild_id, directory_id):
     folder_name = request.args.get('name')
-    success = await bot.create_folder(1136677852796952586, folder_name)
-    return success, 200
-'''
+
+    contents = database.get_directory(directory_id)
+
+    if contents:
+        files, folders = contents
+
+        folders = set(folders)
+
+        if folder_name in folders:
+            return f"Folder with name {folder_name} already exists in directory.", 400
+
+    database.create_directory(folder_name, directory_id)
+
+    return folder_name, 200
 
 
 @app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["GET"])
@@ -82,10 +115,36 @@ async def get_file(guild_id, directory_id, file_id):
 
 
 @app.route("/<int:guild_id>/<int:directory_id>")
-async def url_handler(guild_id, directory_id):
+async def browser(guild_id, directory_id):
+    contents = database.get_directory(directory_id)
 
-    #TODO
-    return await index(guild_id=guild_id, directory_id=directory_id)
+    if not contents:
+        return "Error", 400
+
+    directory_html = ""
+    files, directories = contents
+
+    for file_id, file_name in files:
+        directory_html += f'''
+            <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
+                <button type="submit" class="button">
+                    <img src="../static/file.png" alt="File" class="button-icon">
+                    {file_name}
+                </button>
+            </a>
+
+        '''
+    for new_directory_id, directory_name in directories:
+        directory_html += f'''
+            <a href='/{guild_id}/{new_directory_id}' style="text-decoration: none;">
+                <button type="submit" class="button">
+                    <img src="../static/folder.png" alt="Folder" class="button-icon">
+                    {directory_name}
+                </button>
+            </a>
+        '''
+
+    return await render_template("index.html", directory_html=directory_html), 200
 
 
 @app.route("/api/login")
@@ -94,10 +153,11 @@ async def login_user():
     password = request.args.get("password")
 
     guild_id = database.get_details(username, password)
-    root = database.get_root(guild_id)
 
     if not guild_id:
         return "login", 400
+
+    root = database.get_root(guild_id[0])
 
     if not root:
         return "login", 400
@@ -153,9 +213,9 @@ async def upload_file(guild_id, directory_id):
 
         os.remove(file_path)
 
-        database.insert_file(file, message_ids, directory_id)
+        database.insert_file(file, message_ids, directory_id, guild_id)
 
-    return "File(s) uploaded successfully", 200
+    return "Successfully uploaded files.", 200
 
 
 if __name__ == '__main__':
