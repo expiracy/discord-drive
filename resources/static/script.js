@@ -3,6 +3,16 @@ const fileInput = document.getElementById('fileInput');
 const searchBox = document.getElementById("search");
 const directoryDiv = document.getElementById("directory");
 
+const getGuild = () =>{
+    const pathName = window.location.pathname.split('/');
+    return pathName[pathName.length - 2];
+};
+
+const getDirectoryId =  () => {
+    const pathName = window.location.pathname.split('/');
+    return pathName[pathName.length - 1];
+};
+
 dragDrop.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -34,17 +44,8 @@ fileInput.addEventListener("change", async (e) => {
 
 searchBox.addEventListener('keyup', async (e) => {
     if (e.key === 'Enter') {
-        try {
-            let page = await fetch(`${window.location.pathname}/search?substring=${searchBox.value}`, {
-                method: "GET",
-                redirect: "follow"
-            });
-
-            directoryDiv.innerHTML = await page.text();
-
-        } catch (e) {
-            console.error(e);
-        }
+        console.log(`${location.origin}/${getGuild()}/search?substring=${searchBox.value}`)
+        location.href = `${location.origin}/${getGuild()}/search?substring=${searchBox.value}`
     }
 });
 

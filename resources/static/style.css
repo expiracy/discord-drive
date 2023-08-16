@@ -50,6 +50,7 @@ body, html {
     padding: 10px;
     border: 0;
     border-radius: 5px;
+    background-color: #1E1F22;
 }
 
 .top-margin {
@@ -58,14 +59,6 @@ body, html {
 
 .bottom-margin {
     margin-bottom: 10px;
-}
-
-.GRAY-1 {
-    background-color: #2B2D31;
-}
-
-.GRAY-2 {
-    background-color: #404249;
 }
 
 .button:hover {
@@ -88,23 +81,6 @@ body, html {
     border-radius: 20px;
     height: 100%;
     padding: 20px;
-}
-
-.center-text {
-    text-align: center;
-}
-
-.login-box {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 300px;
-    height: 300px;
-    margin: auto;
-    border: 1px solid #ccc;
-    padding: 40px;
-    background-color: #f0f0f0;
-    border-radius: 20px;
 }
 
 .left-cell {
@@ -143,9 +119,6 @@ body, html {
     box-sizing: border-box;
 }
 
-.GRAY-0 {
-    background-color: #1E1F22;
-}
 
 .button {
     display: flex;

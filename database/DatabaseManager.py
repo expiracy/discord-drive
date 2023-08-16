@@ -88,7 +88,7 @@ class DatabaseManager:
 
     def get_directory(self, directory_id):
         files_statement = '''
-            SELECT file_id, file_name FROM Files
+            SELECT file_id, file_name, directory_id FROM Files
             WHERE directory_id=?
             ORDER BY file_name ASC;
         '''
@@ -207,16 +207,20 @@ class DatabaseManager:
         self.cursor.execute(children_statement, (parent_id, child_id))
         self.connection.commit()
 
-    def search(self, substring, guild_id):
+    def search(self, substring, guild_id, directory_id=None):
         search_statement = '''
-            SELECT file_id, file_name FROM Files
-            WHERE file_name LIKE '%' || ? || '%' AND guild_id=?;
+            SELECT file_id, file_name, directory_id FROM Files
+            WHERE file_name LIKE '%' || ? || '%' 
         '''
 
-        self.cursor.execute(search_statement, (substring, guild_id))
-        res = self.cursor.fetchall()
+        if directory_id:
+            search_statement += "AND directory_id=?;"
+            self.cursor.execute(search_statement, (substring, directory_id))
+        else:
+            search_statement += "AND guild_id=?;"
+            self.cursor.execute(search_statement, (substring, guild_id))
 
-        return res
+        return self.cursor.fetchall()
 
 if __name__ == '__main__':
     database = DatabaseManager()

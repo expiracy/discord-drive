@@ -37,44 +37,65 @@ async def app_root():
     return await login_page()
 
 
-@app.route("/<int:guild_id>/<int:directory_id>/search")
-async def search(guild_id, directory_id):
-    substring = request.args.get('substring')
-
-    files = database.search(substring, guild_id)
-
+def generate_directory_html(guild_id=-1, files=None, directories=None):
     directory_html = ""
 
-    for file_id, file_name in files:
-        directory_html += f'''
-            <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
-                <button type="submit" class="button">
-                    <img src="../static/file.png" alt="File" class="button-icon">
-                    {file_name}
-                </button>
-            </a>\n
-        '''
+    if files:
+        for file_id, file_name, directory_id in files:
+            directory_html += f'''
+                <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
+                    <button type="submit" class="button">
+                        <img src="{url_for('static', filename='file.png')}" alt="File" class="button-icon">
+                        {file_name}
+                    </button>
+                </a>\n
+            '''
 
-    return directory_html, 200
+    if directories:
+        for new_directory_id, directory_name in directories:
+            directory_html += f'''
+                <a href='/{guild_id}/{new_directory_id}' style="text-decoration: none;">
+                    <button type="submit" class="button">
+                        <img src="{url_for('static', filename='folder.png')}" alt="Folder" class="button-icon">
+                        {directory_name}
+                    </button>
+                </a>
+            '''
+
+    return directory_html
+
+
+@app.route("/<int:guild_id>/<int:directory_id>/search", methods=["GET"])
+async def search_directory(guild_id, directory_id):
+    substring = request.args.get('substring')
+    files = database.search(substring, guild_id, directory_id)
+    return await render_template("index.html", directory_html=generate_directory_html(guild_id, files))
+
+
+@app.route("/<int:guild_id>/search", methods=["GET"])
+async def search_guild(guild_id):
+    substring = request.args.get('substring')
+    files = database.search(substring, guild_id)
+    return await render_template("index.html", directory_html=generate_directory_html(guild_id, files))
 
 
 @app.route("/api/create_folder/<int:guild_id>/<int:directory_id>", methods=["GET"])
 async def create_folder(guild_id, directory_id):
-    folder_name = request.args.get('name')
+    new_directory_name = request.args.get('name')
 
     contents = database.get_directory(directory_id)
 
     if contents:
-        files, folders = contents
+        files, directories = contents
 
-        folders = set(folders)
+        directories = set([directory_name for _, directory_name in directories])
 
-        if folder_name in folders:
-            return f"Folder with name {folder_name} already exists in directory.", 400
+        if new_directory_name in directories:
+            return f"Folder with name {new_directory_name} already exists in directory.", 400
 
-    database.create_directory(folder_name, directory_id)
+    database.create_directory(new_directory_name, directory_id)
 
-    return folder_name, 200
+    return new_directory_name, 200
 
 
 @app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["GET"])
@@ -121,30 +142,10 @@ async def browser(guild_id, directory_id):
     if not contents:
         return "Error", 400
 
-    directory_html = ""
     files, directories = contents
 
-    for file_id, file_name in files:
-        directory_html += f'''
-            <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
-                <button type="submit" class="button">
-                    <img src="../static/file.png" alt="File" class="button-icon">
-                    {file_name}
-                </button>
-            </a>
-
-        '''
-    for new_directory_id, directory_name in directories:
-        directory_html += f'''
-            <a href='/{guild_id}/{new_directory_id}' style="text-decoration: none;">
-                <button type="submit" class="button">
-                    <img src="../static/folder.png" alt="Folder" class="button-icon">
-                    {directory_name}
-                </button>
-            </a>
-        '''
-
-    return await render_template("index.html", directory_html=directory_html), 200
+    return await render_template("index.html",
+                                 directory_html=generate_directory_html(guild_id, files, directories)), 200
 
 
 @app.route("/api/login")

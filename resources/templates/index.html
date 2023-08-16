@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../static/style.css">
+    <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
     <title>Discord Drive</title>
 </head>
 <body>
@@ -19,7 +19,7 @@
             <td class="left-cell">
                 <div class="full-box sidebar-div">
 
-                    <input type="text" class="text-input GRAY-0 bottom-margin" placeholder="Search" id="search">
+                    <input type="text" class="text-input bottom-margin" placeholder="Search" id="search">
 
                     <div class="drag-drop" id="dragDrop">
                         Drag files here or click to upload
@@ -28,7 +28,7 @@
                     <input type="file" id="fileInput" style="display: none;"/>
 
                     <button type="submit" class="button top-margin" onclick="createFolder()">
-                        <img src="../static/new_folder.png" alt="New Folder" class="button-icon"/>
+                        <img src="{{url_for('static', filename='new_folder.png')}}" alt="New Folder" class="button-icon"/>
                         New folder
                     </button>
                 </div>
@@ -40,6 +40,6 @@
             </td>
         </tr>
     </table>
-    <script src="../static/script.js"></script>
+    <script src="{{url_for('static', filename='script.js')}}"></script>
 </body>
 </html>
