@@ -44,6 +44,7 @@ body, html {
 }
 
 .text-input {
+    color: #c5c5c5;
     display: block;
     box-sizing: border-box;
     width: 100%;
@@ -133,15 +134,69 @@ body, html {
     font-weight: bold;
     font-size: 15px;
     width: 100%;
+    position: relative;
+    box-sizing: border-box;
 }
 
-.button:hover {
+.search-div {
+    display: flex;
+    align-items: center;
+    background-color: transparent;
+    color: #c5c5c5;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.hover-icon {
+    position: absolute;
+    top: 0;
+    right: -25px;
+    background-color: #ff5c5c;
+    color: #ffffff;
+    padding: 5px 10px;
+    border-radius: 50%;
+    display: none; /* Hide the icon by default */
+}
+
+.button:hover .hover-icon {
     background-color: #404249;
     color: #ffffff;
+    display: inline-block; /* Show the icon on button hover */
 }
 
 .button-icon {
     max-width: 30px;
     max-height: 30px;
     margin-right: 10px; /* Add spacing between image and text */
+}
+
+.search-box-icon {
+    max-width: 20px;
+    max-height: 20px;
+    margin-left: 10px;
+    margin-bottom: 10px;
+    vertical-align: middle;
+}
+
+.directory-content-div {
+    display: inline;
+}
+
+.delete-button {
+    margin-left: auto;
+    margin-right: 0;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.delete-button:hover {
+    color: #ff0000;
 }

@@ -2,6 +2,7 @@ import json
 import os
 
 import asyncio
+from io import BytesIO
 
 import quart
 from quart import Quart, render_template, request, jsonify, send_file, redirect, url_for
@@ -43,23 +44,21 @@ def generate_directory_html(guild_id=-1, files=None, directories=None):
     if files:
         for file_id, file_name, directory_id in files:
             directory_html += f'''
-                <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
-                    <button type="submit" class="button">
-                        <img src="{url_for('static', filename='file.png')}" alt="File" class="button-icon">
-                        {file_name}
-                    </button>
-                </a>\n
+                 <div class="button" onclick="goTo('{guild_id}/{directory_id}/{file_id}')">
+                    <img src="{url_for('static', filename='file.png')}" alt="File" class="button-icon">
+                    {file_name}
+                    <div class="delete-button" onclick="deleteFile({file_id})">✖</div>
+                </div>\n
             '''
 
     if directories:
         for new_directory_id, directory_name in directories:
             directory_html += f'''
-                <a href='/{guild_id}/{new_directory_id}' style="text-decoration: none;">
-                    <button type="submit" class="button">
-                        <img src="{url_for('static', filename='folder.png')}" alt="Folder" class="button-icon">
-                        {directory_name}
-                    </button>
-                </a>
+                <div class="button" onclick="goTo('{guild_id}/{new_directory_id}')">
+                    <img src="{url_for('static', filename='folder.png')}" alt="Folder" class="button-icon">
+                    {directory_name}
+                    <div class="delete-button" onclick="deleteFolder({directory_id})">✖</div>
+                </div>\n
             '''
 
     return directory_html
@@ -132,8 +131,12 @@ async def get_file(guild_id, directory_id, file_id):
     file.reassemble(f"{ROOT}\\temp")
     file_path = f"{ROOT}\\temp\\{file.name}"
 
-    return await send_file(file_path), 200
+    with open(file_path, 'rb') as f:
+        contents = f.read()
 
+    os.remove(file_path)
+
+    return await send_file(BytesIO(contents), mimetype=file.content_type), 200
 
 @app.route("/<int:guild_id>/<int:directory_id>")
 async def browser(guild_id, directory_id):

@@ -3,14 +3,16 @@ const fileInput = document.getElementById('fileInput');
 const searchBox = document.getElementById("search");
 const directoryDiv = document.getElementById("directory");
 
-const getGuild = () =>{
+console.log(window.location.pathname.split('/'))
+
+const getGuild = () => {
     const pathName = window.location.pathname.split('/');
-    return pathName[pathName.length - 2];
+    return pathName[1];
 };
 
 const getDirectoryId =  () => {
     const pathName = window.location.pathname.split('/');
-    return pathName[pathName.length - 1];
+    return pathName[2];
 };
 
 dragDrop.addEventListener('dragover', (e) => {
@@ -103,3 +105,33 @@ async function createFolder() {
         console.error(e);
     }
 }
+
+const home = () => {
+    window.location.href = `/${getGuild()}/0`;
+};
+
+const searchFolder = async () => {
+    location.href = `${location.origin}/${getGuild()}/${getDirectoryId()}/search?substring=${searchBox.value}&scope=folder`;
+};
+
+const searchGuild = async () => {
+    location.href = `${location.origin}/${getGuild()}/${getDirectoryId()}/search?substring=${searchBox.value}&scope=guild`;
+};
+
+const goTo = (pathName) => {
+    window.location.href = `${location.origin}/${pathName}`;
+}
+
+const deleteFolder = async (folderId) => {
+   if (!e) var e = window.event;
+    e.cancelBubble = true;
+    if (e.stopPropagation) e.stopPropagation();
+    console.log("FOLDER");
+};
+
+const deleteFile = async (fileId) => {
+   if (!e) var e = window.event;
+    e.cancelBubble = true;
+    if (e.stopPropagation) e.stopPropagation();
+    console.log("FILE");
+};

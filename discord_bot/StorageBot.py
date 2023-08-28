@@ -50,14 +50,14 @@ class StorageBot:
                     exception = f"{type(e).__name__}: {e}"
                     print(exception)
 
-    async def get_message(self, message_id, guild_id=1136677852796952586, channel_id=1137850799523889314):
+    async def get_message(self, message_id, guild_id, channel_id):
         guild = self.bot.get_guild(guild_id)
 
         channel = guild.get_channel(channel_id)
 
         return await channel.fetch_message(message_id)
 
-    async def upload_file(self, file, guild_id=1136677852796952586):
+    async def upload_file(self, file, guild_id):
         guild = self.bot.get_guild(guild_id)
 
         for channel in guild.channels:
@@ -78,15 +78,14 @@ class StorageBot:
     async def connect(self):
         await self.bot.connect()
 
-    async def send_message(self, message, guild_id=1136677852796952586, channel_id=1137850799523889314):
+    async def send_message(self, message, guild_id, channel_id):
         guild = self.bot.get_guild(guild_id)
         channel = guild.get_channel(channel_id)
 
         message = await channel.send(message)
         return message.id
 
-    async def get_file(self, message_id=1137904409108566016, guild_id=1136677852796952586,
-                       channel_id=1137850799523889314):
+    async def get_file(self, message_id, guild_id, channel_id):
         guild = self.bot.get_guild(guild_id)
 
         channel = guild.get_channel(channel_id)
