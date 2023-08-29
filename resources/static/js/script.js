@@ -122,11 +122,29 @@ const goTo = (pathName) => {
     window.location.href = `${location.origin}/${pathName}`;
 }
 
-const deleteFolder = async (folderId) => {
+const deleteDirectory = async (directoryId) => {
    if (!e) var e = window.event;
     e.cancelBubble = true;
     if (e.stopPropagation) e.stopPropagation();
-    console.log("FOLDER");
+
+    if (!window.confirm("Delete folder?")) return;
+
+    try {
+        let response =
+            await fetch(`${location.href}/../${directoryId}`, {
+                method: 'DELETE',
+            });
+
+        if (!response.ok) {
+            console.error(`Error deleting folder ${directoryId}`);
+            return;
+        }
+
+        document.getElementById(`directoryDiv${directoryId}`).remove();
+
+    } catch (error) {
+        console.error(error)
+    }
 };
 
 const deleteFile = async (fileId) => {
@@ -134,4 +152,23 @@ const deleteFile = async (fileId) => {
     e.cancelBubble = true;
     if (e.stopPropagation) e.stopPropagation();
     console.log("FILE");
+
+    if (!window.confirm("Delete file?")) return;
+
+    try {
+        let response =
+            await fetch(`${location.href}/${fileId}`, {
+                method: 'DELETE',
+            });
+
+        if (!response.ok) {
+            console.error(`Error deleting file ${fileId}`);
+            return;
+        }
+
+        document.getElementById(`fileDiv${fileId}`).remove();
+
+    } catch (error) {
+        console.error(error)
+    }
 };

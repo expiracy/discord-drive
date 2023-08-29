@@ -8,7 +8,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from quart import request
 
-from database.DatabaseManager import DatabaseManager
+from database.Database import Database
 from storage.Registration import Registration
 
 
@@ -19,7 +19,7 @@ class Administration(commands.Cog, name="Administration"):
 
     @staticmethod
     def register_in_database(username, password, guild_id, channel_id):
-        database = DatabaseManager()
+        database = Database()
         directory_id = database.add_directory("files", None)
         database.register_user(username, password, guild_id, channel_id, directory_id)
 

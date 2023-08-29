@@ -3,7 +3,7 @@ import sqlite3
 from storage import File
 
 
-class DatabaseManager:
+class Database:
 
     def __init__(self):
         self.connection = sqlite3.connect('discord_storage.db')
@@ -53,12 +53,13 @@ class DatabaseManager:
             )
         ''')
 
-        # Create DirectoryChil`dren table
+        # Create DirectoryChildren table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS DirectoryChildren (
                 directory_id INTEGER,
                 child_id INTEGER,
                 FOREIGN KEY (child_id) REFERENCES Directory(directory_id),
+                FOREIGN KEY (directory_id) REFERENCES Directory(directory_id),
                 PRIMARY KEY(directory_id, child_id)
             )
         ''')
@@ -86,25 +87,35 @@ class DatabaseManager:
         res = self.cursor.fetchone()
         return res
 
-    def get_directory(self, directory_id):
-        files_statement = '''
-            SELECT file_id, file_name, directory_id FROM Files
-            WHERE directory_id=?
-            ORDER BY file_name ASC;
-        '''
-
-        self.cursor.execute(files_statement, (directory_id,))
-        files = self.cursor.fetchall()
-
-        directory_statement = '''
+    def get_directory_folders(self, directory_id):
+        self.cursor.execute('''
             SELECT directory_id, directory_name FROM Directory
             WHERE parent_id=?
-        '''
-        self.cursor.execute(directory_statement, (directory_id,))
+        ''', (directory_id,))
 
         folders = self.cursor.fetchall()
 
-        return files, folders
+        if not folders:
+            return []
+
+        return folders
+
+    def get_directory_files(self, directory_id):
+        self.cursor.execute('''
+            SELECT file_id, file_name, directory_id FROM Files
+            WHERE directory_id=?
+            ORDER BY file_name ASC;
+        ''', (directory_id,))
+
+        files = self.cursor.fetchall()
+
+        if not files:
+            return []
+
+        return files
+
+    def get_directory(self, directory_id):
+        return self.get_directory_files(directory_id), self.get_directory_folders(directory_id)
 
     def get_file_parts(self, file_id):
         file_parts_statement = '''
@@ -114,9 +125,12 @@ class DatabaseManager:
         '''
 
         self.cursor.execute(file_parts_statement, (file_id,))
-        res = self.cursor.fetchall()
+        message_ids = self.cursor.fetchall()
 
-        return list(map(lambda x: x[0], res))
+        if not message_ids:
+            return []
+        print(list(map(lambda x: x[0], message_ids)))
+        return list(map(lambda x: x[0], message_ids))
 
     def insert_file(self, file: File, message_ids: list, directory_id: int, guild_id: int):
         files_statement = '''
@@ -155,14 +169,16 @@ class DatabaseManager:
         self.connection.commit()
 
     def get_details(self, username, password):
-        users_statement = '''
+        self.cursor.execute('''
             SELECT guild_id FROM Users 
             WHERE username=? AND password=?
-        '''
-
-        self.cursor.execute(users_statement, (username, password))
+        ''', (username, password))
 
         res = self.cursor.fetchone()
+
+        if not res:
+            return None
+
         return res
 
     def add_directory(self, directory_name: str, parent_id):
@@ -178,16 +194,32 @@ class DatabaseManager:
 
         return directory_id
 
-    def get_root(self, guild_id):
-        server_statement = '''
-            SELECT channel_id, root_directory_id FROM Servers
+    def get_file_channel_id(self, guild_id):
+        self.cursor.execute('''
+            SELECT channel_id FROM Servers
             WHERE guild_id=?;
-        '''
+        ''', (guild_id,))
 
-        self.cursor.execute(server_statement, (guild_id,))
+        file_channel_id = self.cursor.fetchone()
 
-        res = self.cursor.fetchone()
-        return res
+        if not file_channel_id:
+            return None
+
+        return file_channel_id[0]
+
+    def get_home_directory_id(self, guild_id):
+
+        self.cursor.execute('''
+            SELECT root_directory_id FROM Servers
+            WHERE guild_id=?;
+        ''', (guild_id,))
+
+        home_directory_id = self.cursor.fetchone()
+
+        if not home_directory_id:
+            return None
+
+        return home_directory_id[0]
 
     def create_directory(self, directory_name, parent_id):
         directory_statement = '''
@@ -222,6 +254,86 @@ class DatabaseManager:
 
         return self.cursor.fetchall()
 
+    def delete_file(self, file_id):
+        # File not in DB
+        if not self.get_file_info(file_id):
+            return False
+
+        self.cursor.execute('''
+            DELETE FROM Files
+            WHERE file_id=?;
+        ''', (file_id,))
+
+        self.cursor.execute('''
+            DELETE FROM FileParts
+            WHERE file_id=?;
+        ''', (file_id,))
+
+        self.connection.commit()
+
+        return True
+
+    def delete_directory(self, directory_id):
+        if not self.get_directory(directory_id):
+            return False
+
+        files = self.get_directory_files(directory_id)
+
+        for file_id, _, _ in files:
+            self.delete_file(file_id)
+
+        children = self.get_directory_children(directory_id)
+
+        self.cursor.execute('''
+            DELETE FROM DirectoryChildren
+            WHERE directory_id=? AND child_id=?;
+         ''', (self.get_directory_parent(directory_id), directory_id))
+
+        for child_id in children:
+            print(child_id, directory_id)
+            self.delete_directory(child_id)
+
+            self.cursor.execute('''
+                DELETE FROM DirectoryChildren
+                WHERE directory_id=? AND child_id=?;
+             ''', (directory_id, child_id))
+
+        self.cursor.execute('''
+            DELETE FROM Directory
+            WHERE directory_id=?;
+        ''', (directory_id,))
+
+        self.connection.commit()
+
+        return True
+
+    def get_directory_parent(self, directory_id):
+        self.cursor.execute('''
+            SELECT parent_id FROM Directory
+            WHERE directory_id=?;
+        ''', (directory_id,))
+
+        parent = self.cursor.fetchone()
+
+        if not parent:
+            return None
+
+        return parent[0]
+
+    def get_directory_children(self, directory_id):
+        self.cursor.execute('''
+            SELECT child_id FROM DirectoryChildren
+            WHERE directory_id=?;
+        ''', (directory_id,))
+
+        children = self.cursor.fetchall()
+
+        if not children:
+            return []
+
+        return list(map(lambda x: x[0], children))
+
+
 if __name__ == '__main__':
-    database = DatabaseManager()
+    database = Database()
     database.create_tables()

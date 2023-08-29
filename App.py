@@ -7,7 +7,7 @@ from io import BytesIO
 import quart
 from quart import Quart, render_template, request, jsonify, send_file, redirect, url_for
 
-from database.DatabaseManager import DatabaseManager
+from database.Database import Database
 from discord_bot.StorageBot import StorageBot
 from storage.File import File
 
@@ -22,7 +22,7 @@ app = Quart(
 app.config['MAX_CONTENT_LENGTH'] = 1e9
 
 bot = StorageBot()
-database = DatabaseManager()
+database = Database()
 database.create_tables()
 
 
@@ -44,8 +44,8 @@ def generate_directory_html(guild_id=-1, files=None, directories=None):
     if files:
         for file_id, file_name, directory_id in files:
             directory_html += f'''
-                 <div class="button" onclick="goTo('{guild_id}/{directory_id}/{file_id}')">
-                    <img src="{url_for('static', filename='file.png')}" alt="File" class="button-icon">
+                 <div id="fileDiv{file_id}" class="button" onclick="goTo('{guild_id}/{directory_id}/{file_id}')">
+                    <img src="{url_for('static', filename='images/file.png')}" alt="File" class="button-icon">
                     {file_name}
                     <div class="delete-button" onclick="deleteFile({file_id})">✖</div>
                 </div>\n
@@ -54,14 +54,39 @@ def generate_directory_html(guild_id=-1, files=None, directories=None):
     if directories:
         for new_directory_id, directory_name in directories:
             directory_html += f'''
-                <div class="button" onclick="goTo('{guild_id}/{new_directory_id}')">
-                    <img src="{url_for('static', filename='folder.png')}" alt="Folder" class="button-icon">
+                <div id="directoryDiv{new_directory_id}" class="button" onclick="goTo('{guild_id}/{new_directory_id}')">
+                    <img src="{url_for('static', filename='images/folder.png')}" alt="Folder" class="button-icon">
                     {directory_name}
-                    <div class="delete-button" onclick="deleteFolder({directory_id})">✖</div>
+                    <div class="delete-button" onclick="deleteDirectory({new_directory_id})">✖</div>
                 </div>\n
             '''
 
     return directory_html
+
+
+@app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["DELETE"])
+async def delete_file(guild_id, directory_id, file_id):
+    if not Database().delete_file(file_id):
+        return str(file_id), 400
+
+    return str(file_id), 200
+
+@app.route("/<int:guild_id>/<int:directory_id>/", methods=["DELETE"])
+async def delete_directory(guild_id, directory_id):
+    if not Database().delete_directory(directory_id):
+        return str(directory_id), 400
+
+    return str(directory_id), 200
+
+
+@app.route("/<int:guild_id>/0", methods=["GET"])
+async def home(guild_id):
+    home_directory_id = Database().get_home_directory_id(guild_id)
+
+    if not home_directory_id:
+        return "Page not found", 404
+
+    return redirect(f"/{guild_id}/{home_directory_id}")
 
 
 @app.route("/<int:guild_id>/<int:directory_id>/search", methods=["GET"])
@@ -99,26 +124,36 @@ async def create_folder(guild_id, directory_id):
 
 @app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["GET"])
 async def get_file(guild_id, directory_id, file_id):
-    file_info = database.get_file_info(file_id)
+    db = Database()
+    file_info = db.get_file_info(file_id)
 
     if not file_info:
         return "File does not exist", 400
 
-    root = database.get_root(guild_id)
+    file = File(*file_info)
 
-    if not root:
+    home_directory_id = db.get_home_directory_id(guild_id)
+
+    if not home_directory_id:
         return "Server has not been registered", 400
 
-    channel_id, _ = root
+    file_channel_id = db.get_file_channel_id(guild_id)
+    channel = bot.bot.get_channel(file_channel_id)
 
-    file_name, content_type = file_info
+    if not channel:
+        return "File channel could not be found", 404
 
-    file = File(file_name, content_type)
-
-    message_ids = database.get_file_parts(file_id)
+    message_ids = db.get_file_parts(file_id)
 
     for message_id in message_ids:
-        attachment = (await bot.get_message(message_id, guild_id, channel_id)).attachments[0]
+
+        message = await channel.fetch_message(message_id)
+
+        if not message:
+            print(f"Message ID: {message} could not be found")
+            continue
+
+        attachment = message.attachments[0]
 
         data_file_path = f"{ROOT}\\temp\\{attachment.filename}"
         await attachment.save(data_file_path)
@@ -136,14 +171,14 @@ async def get_file(guild_id, directory_id, file_id):
 
     os.remove(file_path)
 
-    return await send_file(BytesIO(contents), mimetype=file.content_type), 200
+    return await send_file(BytesIO(contents), mimetype=file.content_type, as_attachment=True, attachment_filename=file.name), 200
 
 @app.route("/<int:guild_id>/<int:directory_id>")
 async def browser(guild_id, directory_id):
     contents = database.get_directory(directory_id)
 
     if not contents:
-        return "Error", 400
+        return "Error", 404
 
     files, directories = contents
 
@@ -161,12 +196,10 @@ async def login_user():
     if not guild_id:
         return "login", 400
 
-    root = database.get_root(guild_id[0])
+    folder_id = database.get_home_directory_id(guild_id[0])
 
-    if not root:
+    if not folder_id:
         return "login", 400
-
-    channel_id, folder_id = root
 
     return f"{guild_id[0]}/{folder_id}", 200
 

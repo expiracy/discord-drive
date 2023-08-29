@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" type="text/css" href="../static/style.css"/>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{url_for('static', filename='style.js')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/style.css')}}">
     <title>Discord Drive</title>
 </head>
 <body>
@@ -22,8 +21,8 @@
 
                     <div class="search-div">
                         <input type="text" class="text-input bottom-margin" placeholder="Search" id="search">
-                        <img src="{{url_for('static', filename='folder.png')}}" alt="Folder" class="search-box-icon" onclick="searchFolder()">
-                        <img src="{{url_for('static', filename='globe.png')}}" alt="Globe" class="search-box-icon" onclick="searchGuild()">
+                        <img src="{{url_for('static', filename='images/folder.png')}}" alt="Folder" class="search-box-icon" onclick="searchFolder()">
+                        <img src="{{url_for('static', filename='images/globe.png')}}" alt="Globe" class="search-box-icon" onclick="searchGuild()">
                     </div>
 
                     <div class="drag-drop" id="dragDrop">
@@ -33,33 +32,23 @@
                     <input type="file" id="fileInput" style="display: none;"/>
 
                     <button type="submit" class="button top-margin" onclick="createFolder()">
-                        <img src="{{url_for('static', filename='new_folder.png')}}" alt="New Folder" class="button-icon"/>
+                        <img src="{{url_for('static', filename='images/new_folder.png')}}" alt="New Folder" class="button-icon"/>
                         New folder
                     </button>
 
                     <button type="submit" class="button" onclick="home()">
-                        <img src="{{url_for('static', filename='home.png')}}" alt="New Folder" class="button-icon"/>
+                        <img src="{{url_for('static', filename='images/home.png')}}" alt="New Folder" class="button-icon"/>
                         Home
                     </button>
                 </div>
             </td>
             <td class="right-cell">
                 <div class="full-box directory-div" id="directory">
-                    <div class="directory-content-div">
-                        <a href='/{guild_id}/{directory_id}/{file_id}' style="text-decoration: none;">
-                            <div class="button">
-                                <img src="{{url_for('static', filename='file.png')}}" alt="File" class="button-icon">
-                                File Name
-                                <span class="delete-button" onclick="">✖</span>
-                            </div>
-                        </a>
-
-                    </div>
                     {{ directory_html | safe }}
                 </div>
             </td>
         </tr>
     </table>
-    <script src="{{url_for('static', filename='script.js')}}"></script>
+    <script src="{{url_for('static', filename='js/script.js')}}"></script>
 </body>
 </html>
