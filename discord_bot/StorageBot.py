@@ -50,6 +50,28 @@ class StorageBot:
                     exception = f"{type(e).__name__}: {e}"
                     print(exception)
 
+    async def get_attachment_content(self, message_id, channel_id):
+        channel = self.bot.get_channel(channel_id)
+
+        if not channel:
+            return None
+
+        message = await channel.fetch_message(message_id)
+
+        if not message:
+            return None
+
+        if not message.attachments:
+            return None
+
+        attachment = message.attachments[0]
+
+        if not attachment:
+            return None
+
+        return bytearray(await attachment.read())
+
+
     async def get_message(self, message_id, guild_id, channel_id):
         guild = self.bot.get_guild(guild_id)
 

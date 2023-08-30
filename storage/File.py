@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+from io import BytesIO
 
 import requests
 from requests import Response
@@ -21,11 +23,15 @@ class File:
         for chunk in iter(read_chunk, bytearray()):
             self.parts.append(chunk)
 
-    def reassemble(self, directory):
-        file_path = f"{directory}\\{self.name}"
+    def reassemble(self):
+        file_path = f"{sys.path[1]}\\{self.name}"
 
-        with open(file_path, "wb") as file:
+        with open(file_path, "wb") as reassembled_file:
             for part in self.parts:
-                file.write(part)
+                reassembled_file.write(part)
 
-            return file_path
+        with open(file_path, "rb") as reassembled_file:
+            contents = reassembled_file.read()
+
+        os.remove(file_path)
+        return BytesIO(contents)

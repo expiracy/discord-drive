@@ -84,8 +84,12 @@ class Database:
 
         self.cursor.execute(select_statement, (file_id,))
 
-        res = self.cursor.fetchone()
-        return res
+        file_info = self.cursor.fetchone()
+
+        if not file_info:
+            return None
+
+        return file_info
 
     def get_directory_folders(self, directory_id):
         self.cursor.execute('''
@@ -129,7 +133,7 @@ class Database:
 
         if not message_ids:
             return []
-        print(list(map(lambda x: x[0], message_ids)))
+
         return list(map(lambda x: x[0], message_ids))
 
     def insert_file(self, file: File, message_ids: list, directory_id: int, guild_id: int):

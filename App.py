@@ -73,10 +73,12 @@ async def delete_file(guild_id, directory_id, file_id):
 
 @app.route("/<int:guild_id>/<int:directory_id>/", methods=["DELETE"])
 async def delete_directory(guild_id, directory_id):
-    if not Database().delete_directory(directory_id):
-        return str(directory_id), 400
+    success = Database().delete_directory(directory_id)
 
-    return str(directory_id), 200
+    if not success:
+        return json.dumps(success), 400
+
+    return json.dumps(success), 200
 
 
 @app.route("/<int:guild_id>/0", methods=["GET"])
@@ -125,6 +127,7 @@ async def create_folder(guild_id, directory_id):
 @app.route("/<int:guild_id>/<int:directory_id>/<int:file_id>", methods=["GET"])
 async def get_file(guild_id, directory_id, file_id):
     db = Database()
+
     file_info = db.get_file_info(file_id)
 
     if not file_info:
@@ -132,46 +135,24 @@ async def get_file(guild_id, directory_id, file_id):
 
     file = File(*file_info)
 
-    home_directory_id = db.get_home_directory_id(guild_id)
-
-    if not home_directory_id:
-        return "Server has not been registered", 400
-
-    file_channel_id = db.get_file_channel_id(guild_id)
-    channel = bot.bot.get_channel(file_channel_id)
-
-    if not channel:
-        return "File channel could not be found", 404
-
+    channel_id = db.get_file_channel_id(guild_id)
     message_ids = db.get_file_parts(file_id)
 
     for message_id in message_ids:
+        content = await bot.get_attachment_content(message_id, channel_id)
 
-        message = await channel.fetch_message(message_id)
+        if not content:
+            return "Error reassembling file", 400
 
-        if not message:
-            print(f"Message ID: {message} could not be found")
-            continue
+        file.add_part(content)
 
-        attachment = message.attachments[0]
+    return await send_file(
+        filename_or_io=file.reassemble(),
+        mimetype=file.content_type,
+        as_attachment=True,
+        attachment_filename=file.name
+    ), 200
 
-        data_file_path = f"{ROOT}\\temp\\{attachment.filename}"
-        await attachment.save(data_file_path)
-
-        with open(data_file_path, "rb") as data_file:
-            file.add_part(data_file.read())
-
-        os.remove(data_file_path)
-
-    file.reassemble(f"{ROOT}\\temp")
-    file_path = f"{ROOT}\\temp\\{file.name}"
-
-    with open(file_path, 'rb') as f:
-        contents = f.read()
-
-    os.remove(file_path)
-
-    return await send_file(BytesIO(contents), mimetype=file.content_type, as_attachment=True, attachment_filename=file.name), 200
 
 @app.route("/<int:guild_id>/<int:directory_id>")
 async def browser(guild_id, directory_id):
